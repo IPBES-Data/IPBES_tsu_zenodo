@@ -1,0 +1,34 @@
+---
+title: "Metadata from IPBES on Zenodo"
+format: html
+---
+
+```{r}
+# Load the zen4R library
+library(zen4R)
+
+# Authenticate with Zenodo
+zen <- ZenodoManager$new(token = Sys.getenv("Zenodo_IPBES_RO"))
+
+# Get the community ID
+community_id <- "ipbes"
+
+# Get the community info
+community <- zen$getCommunityById(community_id)
+
+# Get all deposits with ipbes somwhere
+IPBES_records <- zen$getRecords(community_id)
+
+# Filter records based on the community ID
+ipbes <- sapply(
+    IPBES_records,
+    function(record) {
+        "ipbes" %in% unlist(record$metadata$communities)
+    }
+)
+
+IPBES_records <- IPBES_records[ipbes]
+
+rm(ipbes)
+
+```
