@@ -1,3 +1,3 @@
 # IPBES Zenodo deposits in OpenAlex
 
-[Report](Metadata from IPBES on Zenodo.html)
+[Click here](IPBES_Zenodo_OpenAlex.html) to see the report
