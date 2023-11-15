@@ -1,34 +1,153 @@
 ---
 title: "Metadata from IPBES on Zenodo"
-format: html
+author:
+  - name: Rainer M Krug
+    id: sb
+    orcid: 0000-0002-7490-0066
+    email: Rainwer@Krugs.de
+    roles: [author, editor]
+license: "CC BY"
+copyright: 
+  holder: No idea
+  year: 2023
+
+format:
+    html:
+        toc: true
+        toc-depth: 5
+        toc_expand: true
+        embed-resources: true
+        code-fold: true
+        code-summary: 'Show the code'
 ---
 
+## Setup and get records from Zenodo
 ```{r}
+#| label: setup
+#|
+
 # Load the zen4R library
 library(zen4R)
+library(openalexR)
 
-# Authenticate with Zenodo
-zen <- ZenodoManager$new(token = Sys.getenv("Zenodo_IPBES_RO"))
+fn <- file.path("data", "ipbes_zenodo_records")
+if (!file.exists(paste0(fn, ".rds"))) {
+    # Authenticate with Zenodo
+    zen <- ZenodoManager$new(token = Sys.getenv("Zenodo_IPBES_RO"))
 
-# Get the community ID
-community_id <- "ipbes"
+    # Get the community ID
+    community_id <- "ipbes"
 
-# Get the community info
-community <- zen$getCommunityById(community_id)
+    # Get the community info
+    community <- zen$getCommunityById(community_id)
 
-# Get all deposits with ipbes somwhere
-IPBES_records <- zen$getRecords(community_id)
+    # Get all deposits with ipbes somwhere
+    ipbes_zenodo <- zen$getRecords(community_id)
 
-# Filter records based on the community ID
-ipbes <- sapply(
-    IPBES_records,
-    function(record) {
-        "ipbes" %in% unlist(record$metadata$communities)
+    # Filter records based on the community ID
+    ipbes <- sapply(
+        ipbes_zenodo,
+        function(record) {
+            "ipbes" %in% unlist(record$metadata$communities)
+        }
+    )
+
+    ipbes_zenodo <- ipbes_zenodo[ipbes]
+
+    rm(ipbes)
+
+    saveRDS(ipbes_zenodo, paste0(fn, ".rds"))
+} else {
+    ipbes_zenodo <- readRDS(paste0(fn, ".rds"))
+}
+
+```
+
+### Get the dois and titles of the records
+
+```{r}
+dois <- data.frame()
+
+for (i in seq(length.out = length(ipbes_zenodo))) {
+    record <- ipbes_zenodo[[i]]
+    dois <- rbind(
+        dois,
+        c(
+            doi = record$metadata$doi,
+            year = record$metadata$publication_date,
+            title = record$metadata$title
+        )
+    )
+}
+
+names(dois) <- c("doi", "title", "year")
+```
+
+```{r}
+#| label: get_oa_ids
+#|
+fn <- file.path(".", "data", "ipbes_works.rds")
+if (!file.exists(fn)) {
+    # Define the maximum chunk size
+    chunk_size <- 50
+    # Split the vector into chunks
+    doi_chunks <- split(
+        dois$doi,
+        ceiling(seq_along(dois$doi) / chunk_size)
+    )
+
+    ipbes_works <- lapply(
+        doi_chunks,
+        function(dois) {
+            openalexR::oa_query(doi = dois) |>
+                openalexR::oa_request(count_only = FALSE)
+        }
+    ) |>
+        unlist(recursive = FALSE)
+
+    saveRDS(ipbes_works, file = fn)
+} else {
+    ipbes_works <- readRDS(file = fn)
+}
+```
+
+## IPBES deposits on Zenodo with OpenAlex ids
+
+This is a quick and dirty table - it could made nicer - but it fulfills it's purpose.
+
+```{r}
+#| label: merge_together
+res <- sapply(
+    ipbes_works,
+    function(x) {
+        c(
+            gsub(pattern = "https://doi.org/", "", x$doi),
+            x$id
+        )
     }
-)
+) |>
+    t() |>
+    as.data.frame() |>
+    merge(
+        x = dois,
+        by.x = "doi",
+        by.y = "V1",
+        all.x = TRUE,
+        all.y = FALSE
+    )
+names(res) <- c("doi", "title", "year", "oa_id")
 
-IPBES_records <- IPBES_records[ipbes]
+res <- res[c("year", "title", "doi", "oa_id")]
 
-rm(ipbes)
+res <- res[order(res$year, res$oa_id, na.last = TRUE), ]
 
+res$doi <- paste0("<a href='https://doi.org/", res$doi, "' target='_blank'>", res$doi, "</a>")
+
+res$oa_id <- gsub("https://openalex.org/", "", res$oa_id)
+res$oa_id[!is.na(res$oa_id)] <- paste0("<a href='https://api.openalex.org/works/", res$oa_id[!is.na(res$oa_id)], "' target='_blank'>", res$oa_id[!is.na(res$oa_id)], "</a>")
+
+res |>
+    knitr::kable(
+        row.names = FALSE
+    )
 ```
