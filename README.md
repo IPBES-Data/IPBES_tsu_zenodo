@@ -1,3 +1,5 @@
 # IPBES Zenodo deposits in OpenAlex
 
-[Click here](IPBES_Zenodo_OpenAlex.html) to see the report
+[Repository](https://github.com/IPBES-Data/IPBES_tsu_zenodo)
+
+[The report](IPBES_Zenodo_OpenAlex.html)
