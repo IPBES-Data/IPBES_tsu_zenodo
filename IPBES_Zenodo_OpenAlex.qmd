@@ -31,6 +31,7 @@ format:
 # Load the zen4R library
 library(zen4R)
 library(openalexR)
+library(dplyr)
 
 fn <- file.path("data", "ipbes_zenodo_records")
 if (!file.exists(paste0(fn, ".rds"))) {
@@ -82,7 +83,7 @@ for (i in seq(length.out = length(ipbes_zenodo))) {
     )
 }
 
-names(dois) <- c("doi", "title", "year")
+names(dois) <- c("doi", "year", "title")
 ```
 
 ```{r}
@@ -137,16 +138,19 @@ res <- sapply(
         all.x = TRUE,
         all.y = FALSE
     )
-names(res) <- c("doi", "title", "year", "oa_id")
+names(res) <- c("doi", "year", "title", "oa_id")
 
 res <- res[c("year", "title", "doi", "oa_id")]
 
-res <- res[order(res$year, res$oa_id, na.last = TRUE), ]
+write.csv(res, file.path(".", "data", "ipbes_zenodo_oa.csv"), row.names = FALSE)
 
 res$doi <- paste0("<a href='https://doi.org/", res$doi, "' target='_blank'>", res$doi, "</a>")
 
 res$oa_id <- gsub("https://openalex.org/", "", res$oa_id)
 res$oa_id[!is.na(res$oa_id)] <- paste0("<a href='https://api.openalex.org/works/", res$oa_id[!is.na(res$oa_id)], "' target='_blank'>", res$oa_id[!is.na(res$oa_id)], "</a>")
+
+res <- res[order(res$oa_id, res$year, na.last = TRUE), ]
+
 
 res |>
     knitr::kable(
