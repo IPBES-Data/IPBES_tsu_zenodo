@@ -144,7 +144,7 @@ ipbes_works |>
         by = c("doi" = "doi")
     ) |>
     dplyr::mutate(
-        doi   = paste0("<a href='https://doi.org/", doi, "' target='_blank'>", doi, "</a>"),
+        doi = paste0("<a href='https://doi.org/", doi, "' target='_blank'>", doi, "</a>"),
         oa_id = ifelse(
             is.na(oa_id),
             "",
@@ -159,3 +159,154 @@ ipbes_works |>
     ) |>
     IPBES.R::table_dt()
 ```
+
+## IPBES Deposits Network
+
+```{r}
+#| label: create_network_data
+fn <- file.path("data", "ipbes_network.rds")
+
+if (!file.exists(fn)) {
+    relations <- lapply(
+        ipbes_zenodo,
+        function(rec) {
+            relation <- rec$metadata$related_identifiers
+            if (is.null(relation)) {
+                return(NULL)
+            }
+            result <- rec$metadata$related_identifiers |>
+                dplyr::bind_rows() |>
+                dplyr::mutate(doi = rec$metadata$doi)
+
+            return(result)
+        }
+    ) |>
+        dplyr::bind_rows() |>
+        dplyr::left_join(
+            y = read.table("inst/relation_direction.txt", header = TRUE),
+            by = "relation"
+        )
+
+    nodes <- unique(
+        c(
+            relations$doi,
+            relations$identifier
+        )
+    ) 
+
+    edges <- rbind(
+        relations |>
+            filter(
+                direction == "to"
+            ) |>
+            dplyr::select(
+                from = doi,
+                to = identifier
+            ),
+        relations |>
+            filter(
+                direction == "from"
+            ) |>
+            dplyr::select(
+                from = doi,
+                to = identifier
+            )
+    )
+
+    ipbes_network <- list(
+        nodes = nodes,
+        edges = edges
+    )
+
+    rm(nodes, edges, relations)
+
+    saveRDS(ipbes_network, fn)
+} else {
+    ipbes_network <- readRDS(fn)
+}
+```
+
+```{r}
+#| label: plot_network
+
+fn <- file.path("figures", "ipbes_network.html")
+
+## Simple forceNetwork
+networkData <- data.frame(
+    src = ipbes_network$edges$from,
+    target = ipbes_network$edges$to,
+    stringsAsFactors = FALSE
+)
+
+nodes <- data.frame(
+    name = ipbes_network$nodes,
+    # title = ipbes_network$nodes$,
+    # doi = ipbes_network$nodes$doi,
+    stringsAsFactors = FALSE
+)
+
+nodes$id <- 0:(nrow(nodes) - 1)
+
+# create a data frame of the edges that uses id 0:9 instead of their names
+edges <- networkData |>
+    left_join(nodes, by = c("src" = "name")) |>
+    select(-src) |>
+    rename(source = id) |>
+    left_join(nodes, by = c("target" = "name")) |>
+    select(-target) |>
+    rename(target = id) |>
+    mutate(width = 1)
+
+# # make a grouping variable that will match to colours
+nodes$group <- 1
+
+# nodes$oa_id <- nodes$name
+# nodes$name <- nodes$author
+
+# control colours with a JS ordinal scale
+# ColourScale <- 'd3.scaleOrdinal()
+#                         .domain(["key_paper", "other"])
+#                      .range(["#FF6900", "#694489"]);'
+
+openDOI <- "window.open(d.doi)"
+
+nwg <- networkD3::forceNetwork(
+    Links = edges,
+    Nodes = nodes,
+    Source = "source",
+    Target = "target",
+    NodeID = "name",
+    # Nodesize = "nodesize",
+    Group = "group",
+    # Value = "width",
+    opacity = 0.9,
+    zoom = TRUE,
+    # colourScale = DT::JS(ColourScale),
+    fontSize = 20,
+    legend = TRUE,
+    clickAction = openDOI
+)
+
+nwg$x$nodes$doi <- nodes$doi
+
+networkD3::saveNetwork(
+    nwg,
+    file = fn,
+    selfcontained = TRUE
+)
+
+unlink(
+    gsub(
+        fn,
+        pattern = "\\.html",
+        replacement = "_files"
+    ), 
+    recursive = TRUE, 
+    force = TRUE
+)
+
+
+nwg
+```
+
+[IPBES Deposits Network](figures/ipbes_network.html)
