@@ -19,6 +19,11 @@ format:
         embed-resources: true
         code-fold: true
         code-summary: 'Show the code'
+        grid:
+            sidebar-width: 0px
+            body-width: 4000px
+            margin-width: 200px
+            gutter-width: 1.5rem      
 ---
 
 ## [Back to the Repository](https://github.com/IPBES-Data/IPBES_tsu_zenodo)
@@ -84,6 +89,8 @@ for (i in seq(length.out = length(ipbes_zenodo))) {
 }
 
 names(dois) <- c("doi", "year", "title")
+
+dois <- tibble::as_tibble(dois)
 ```
 
 ```{r}
@@ -120,40 +127,35 @@ This is a quick and dirty table - it could made nicer - but it fulfills it's pur
 
 ```{r}
 #| label: merge_together
-res <- sapply(
-    ipbes_works,
-    function(x) {
-        c(
-            gsub(pattern = "https://doi.org/", "", x$doi),
-            x$id
-        )
-    }
-) |>
-    t() |>
-    as.data.frame() |>
-    merge(
+
+ipbes_works |>
+    openalexR::works2df() |>
+    dplyr::select(
+        # year = publication_year,
+        # title,
+        doi,
+        oa_id = id
+    ) |>
+    dplyr::mutate(
+        doi = gsub(pattern = "https://doi.org/", replacement = "", x = doi)
+    ) |>
+    dplyr::left_join(
         x = dois,
-        by.x = "doi",
-        by.y = "V1",
-        all.x = TRUE,
-        all.y = FALSE
-    )
-names(res) <- c("doi", "year", "title", "oa_id")
-
-res <- res[c("year", "title", "doi", "oa_id")]
-
-write.csv(res, file.path(".", "data", "ipbes_zenodo_oa.csv"), row.names = FALSE)
-
-res$doi <- paste0("<a href='https://doi.org/", res$doi, "' target='_blank'>", res$doi, "</a>")
-
-res$oa_id <- gsub("https://openalex.org/", "", res$oa_id)
-res$oa_id[!is.na(res$oa_id)] <- paste0("<a href='https://api.openalex.org/works/", res$oa_id[!is.na(res$oa_id)], "' target='_blank'>", res$oa_id[!is.na(res$oa_id)], "</a>")
-
-res <- res[order(res$oa_id, res$year, na.last = TRUE), ]
-
-
-res |>
-    knitr::kable(
-        row.names = FALSE
-    )
+        by = c("doi" = "doi")
+    ) |>
+    dplyr::mutate(
+        doi   = paste0("<a href='https://doi.org/", doi, "' target='_blank'>", doi, "</a>"),
+        oa_id = ifelse(
+            is.na(oa_id),
+            "",
+            paste0("<a href='", oa_id, "' target='_blank'>", gsub(pattern = "https://openalex.org/", replacement = "", oa_id), "</a>")
+        )
+    ) |>
+    select(
+        doi,
+        oa_id,
+        year,
+        title
+    ) |>
+    IPBES.R::table_dt()
 ```
