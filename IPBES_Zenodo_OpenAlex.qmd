@@ -176,8 +176,15 @@ if (!file.exists(fn)) {
             }
             result <- rec$metadata$related_identifiers |>
                 dplyr::bind_rows() |>
-                dplyr::mutate(doi = rec$metadata$doi)
-
+                dplyr::mutate(
+                    year = rec$metadata$publication_date,
+                    doi = rec$metadata$doi,
+                    title = rec$metadata$title,
+                    keywords = rec$metadata$keywords |> 
+                        unlist() |> 
+                        paste(collapse = "; "),
+                    
+                )
             return(result)
         }
     ) |>
@@ -192,7 +199,7 @@ if (!file.exists(fn)) {
             relations$doi,
             relations$identifier
         )
-    ) 
+    )
 
     edges <- rbind(
         relations |>
@@ -213,11 +220,16 @@ if (!file.exists(fn)) {
             )
     )
 
-    ipbes_network <- list(
+    network <- list(
         nodes = nodes,
         edges = edges
     )
 
+    ipbes_network <- list(
+        nodes = nodes,
+        edges = edges,
+        relations = relations
+    )
     rm(nodes, edges, relations)
 
     saveRDS(ipbes_network, fn)
@@ -310,3 +322,19 @@ nwg
 ```
 
 [IPBES Deposits Network](figures/ipbes_network.html)
+
+```{r}
+ipbes_network$relations |>
+    dplyr::select(
+        year,
+        doi,
+        relation,
+        identifier,
+        direction,
+        title,
+        keywords
+    ) |>
+    IPBES.R::table_dt(
+        fixedColumns = list(leftColumns = 6)
+    )
+```
