@@ -1,15 +1,26 @@
 ---
 title: "Metadata from IPBES on Zenodo"
+subtitle: Technical Guideline Series
+date: today
 author:
   - name: Rainer M Krug
     id: sb
     orcid: 0000-0002-7490-0066
     email: Rainwer@Krugs.de
     roles: [author, editor]
+abstract: >
+  To be added
 license: "CC BY"
 copyright: 
   holder: No idea
   year: 2023
+citation: 
+  type: report
+  container-title: IPBES Technical Reports Series
+  doi: 10.5281/zenodo.10037104
+  url: https://ipbes-data.github.io/IPBES_tsu_zenodo
+doi: 10.5281/zenodo.10037104
+version: 0.0.1
 
 format:
     html:
@@ -26,8 +37,9 @@ format:
             gutter-width: 1.5rem      
 ---
 
-## [Back to the Repository](https://github.com/IPBES-Data/IPBES_tsu_zenodo)
+# [GitHub Repository](https://github.com/IPBES-Data/IPBES_tsu_zenodo)
 
+# Methods
 ## Setup and get records from Zenodo
 ```{r}
 #| label: setup
@@ -40,33 +52,33 @@ library(dplyr)
 
 fn <- file.path("data", "ipbes_zenodo_records")
 if (!file.exists(paste0(fn, ".rds"))) {
-    # Authenticate with Zenodo
-    zen <- ZenodoManager$new(token = Sys.getenv("Zenodo_IPBES_RO"))
+  # Authenticate with Zenodo
+  zen <- ZenodoManager$new(token = Sys.getenv("Zenodo_IPBES_RO"))
 
-    # Get the community ID
-    community_id <- "ipbes"
+  # Get the community ID
+  community_id <- "ipbes"
 
-    # Get the community info
-    community <- zen$getCommunityById(community_id)
+  # Get the community info
+  community <- zen$getCommunityById(community_id)
 
-    # Get all deposits with ipbes somwhere
-    ipbes_zenodo <- zen$getRecords(community_id)
+  # Get all deposits with ipbes somwhere
+  ipbes_zenodo <- zen$getRecords(community_id)
 
-    # Filter records based on the community ID
-    ipbes <- sapply(
-        ipbes_zenodo,
-        function(record) {
-            "ipbes" %in% unlist(record$metadata$communities)
-        }
-    )
+  # Filter records based on the community ID
+  ipbes <- sapply(
+    ipbes_zenodo,
+    function(record) {
+      "ipbes" %in% unlist(record$metadata$communities)
+    }
+  )
 
-    ipbes_zenodo <- ipbes_zenodo[ipbes]
+  ipbes_zenodo <- ipbes_zenodo[ipbes]
 
-    rm(ipbes)
+  rm(ipbes)
 
-    saveRDS(ipbes_zenodo, paste0(fn, ".rds"))
+  saveRDS(ipbes_zenodo, paste0(fn, ".rds"))
 } else {
-    ipbes_zenodo <- readRDS(paste0(fn, ".rds"))
+  ipbes_zenodo <- readRDS(paste0(fn, ".rds"))
 }
 
 ```
@@ -77,15 +89,15 @@ if (!file.exists(paste0(fn, ".rds"))) {
 dois <- data.frame()
 
 for (i in seq(length.out = length(ipbes_zenodo))) {
-    record <- ipbes_zenodo[[i]]
-    dois <- rbind(
-        dois,
-        c(
-            doi = record$metadata$doi,
-            year = record$metadata$publication_date,
-            title = record$metadata$title
-        )
+  record <- ipbes_zenodo[[i]]
+  dois <- rbind(
+    dois,
+    c(
+      doi = record$metadata$doi,
+      year = record$metadata$publication_date,
+      title = record$metadata$title
     )
+  )
 }
 
 names(dois) <- c("doi", "year", "title")
@@ -98,67 +110,66 @@ dois <- tibble::as_tibble(dois)
 #|
 fn <- file.path(".", "data", "ipbes_works.rds")
 if (!file.exists(fn)) {
-    # Define the maximum chunk size
-    chunk_size <- 50
-    # Split the vector into chunks
-    doi_chunks <- split(
-        dois$doi,
-        ceiling(seq_along(dois$doi) / chunk_size)
-    )
+  # Define the maximum chunk size
+  chunk_size <- 50
+  # Split the vector into chunks
+  doi_chunks <- split(
+    dois$doi,
+    ceiling(seq_along(dois$doi) / chunk_size)
+  )
 
-    ipbes_works <- lapply(
-        doi_chunks,
-        function(dois) {
-            openalexR::oa_query(doi = dois) |>
-                openalexR::oa_request(count_only = FALSE)
-        }
-    ) |>
-        unlist(recursive = FALSE)
+  ipbes_works <- lapply(
+    doi_chunks,
+    function(dois) {
+      openalexR::oa_query(doi = dois) |>
+        openalexR::oa_request(count_only = FALSE)
+    }
+  ) |>
+    unlist(recursive = FALSE)
 
-    saveRDS(ipbes_works, file = fn)
+  saveRDS(ipbes_works, file = fn)
 } else {
-    ipbes_works <- readRDS(file = fn)
+  ipbes_works <- readRDS(file = fn)
 }
 ```
 
-## IPBES deposits on Zenodo with OpenAlex ids
 
-This is a quick and dirty table - it could made nicer - but it fulfills it's purpose.
+# Results
+## Keywords
+
+### Number of keywords per Deposit
+```{r}
+ipbes_zenodo |>
+  sapply(
+    FUN = function(x) {
+      x$metadata$keywords |>
+        unlist() |>
+        length()
+    }
+  ) |>
+  table() |>
+  knitr::kable(
+    col.names = c("Number of keywords", "n")
+  )
+```
+
+### Keywords used in the deposits
 
 ```{r}
-#| label: merge_together
-
-ipbes_works |>
-    openalexR::works2df() |>
-    dplyr::select(
-        # year = publication_year,
-        # title,
-        doi,
-        oa_id = id
-    ) |>
-    dplyr::mutate(
-        doi = gsub(pattern = "https://doi.org/", replacement = "", x = doi)
-    ) |>
-    dplyr::left_join(
-        x = dois,
-        by = c("doi" = "doi")
-    ) |>
-    dplyr::mutate(
-        doi = paste0("<a href='https://doi.org/", doi, "' target='_blank'>", doi, "</a>"),
-        oa_id = ifelse(
-            is.na(oa_id),
-            "",
-            paste0("<a href='", oa_id, "' target='_blank'>", gsub(pattern = "https://openalex.org/", replacement = "", oa_id), "</a>")
-        )
-    ) |>
-    select(
-        doi,
-        oa_id,
-        year,
-        title
-    ) |>
-    IPBES.R::table_dt()
+ipbes_zenodo |>
+  sapply(
+    FUN = function(x) {
+      x$metadata$keywords |>
+        unlist()
+    }
+  ) |>
+  unlist() |>
+  table() |>
+  sort(decreasing = TRUE) |>
+  knitr::kable(col.names = c("Keyword", "n"))
 ```
+
+
 
 ## IPBES Deposits Network
 
@@ -167,74 +178,73 @@ ipbes_works |>
 fn <- file.path("data", "ipbes_network.rds")
 
 if (!file.exists(fn)) {
-    relations <- lapply(
-        ipbes_zenodo,
-        function(rec) {
-            relation <- rec$metadata$related_identifiers
-            if (is.null(relation)) {
-                return(NULL)
-            }
-            result <- rec$metadata$related_identifiers |>
-                dplyr::bind_rows() |>
-                dplyr::mutate(
-                    year = rec$metadata$publication_date,
-                    doi = rec$metadata$doi,
-                    title = rec$metadata$title,
-                    keywords = rec$metadata$keywords |> 
-                        unlist() |> 
-                        paste(collapse = "; "),
-                    
-                )
-            return(result)
-        }
-    ) |>
+  relations <- lapply(
+    ipbes_zenodo,
+    function(rec) {
+      relation <- rec$metadata$related_identifiers
+      if (is.null(relation)) {
+        return(NULL)
+      }
+      result <- rec$metadata$related_identifiers |>
         dplyr::bind_rows() |>
-        dplyr::left_join(
-            y = read.table("inst/relation_direction.txt", header = TRUE),
-            by = "relation"
+        dplyr::mutate(
+          year = rec$metadata$publication_date,
+          doi = rec$metadata$doi,
+          title = rec$metadata$title,
+          keywords = rec$metadata$keywords |>
+            unlist() |>
+            paste(collapse = "; "),
         )
-
-    nodes <- unique(
-        c(
-            relations$doi,
-            relations$identifier
-        )
+      return(result)
+    }
+  ) |>
+    dplyr::bind_rows() |>
+    dplyr::left_join(
+      y = read.table("inst/relation_direction.txt", header = TRUE),
+      by = "relation"
     )
 
-    edges <- rbind(
-        relations |>
-            filter(
-                direction == "to"
-            ) |>
-            dplyr::select(
-                from = doi,
-                to = identifier
-            ),
-        relations |>
-            filter(
-                direction == "from"
-            ) |>
-            dplyr::select(
-                from = doi,
-                to = identifier
-            )
+  nodes <- unique(
+    c(
+      relations$doi,
+      relations$identifier
     )
+  )
 
-    network <- list(
-        nodes = nodes,
-        edges = edges
-    )
+  edges <- rbind(
+    relations |>
+      filter(
+        direction == "to"
+      ) |>
+      dplyr::select(
+        from = doi,
+        to = identifier
+      ),
+    relations |>
+      filter(
+        direction == "from"
+      ) |>
+      dplyr::select(
+        from = doi,
+        to = identifier
+      )
+  )
 
-    ipbes_network <- list(
-        nodes = nodes,
-        edges = edges,
-        relations = relations
-    )
-    rm(nodes, edges, relations)
+  network <- list(
+    nodes = nodes,
+    edges = edges
+  )
 
-    saveRDS(ipbes_network, fn)
+  ipbes_network <- list(
+    nodes = nodes,
+    edges = edges,
+    relations = relations
+  )
+  rm(nodes, edges, relations)
+
+  saveRDS(ipbes_network, fn)
 } else {
-    ipbes_network <- readRDS(fn)
+  ipbes_network <- readRDS(fn)
 }
 ```
 
@@ -245,29 +255,29 @@ fn <- file.path("figures", "ipbes_network.html")
 
 ## Simple forceNetwork
 networkData <- data.frame(
-    src = ipbes_network$edges$from,
-    target = ipbes_network$edges$to,
-    stringsAsFactors = FALSE
+  src = ipbes_network$edges$from,
+  target = ipbes_network$edges$to,
+  stringsAsFactors = FALSE
 )
 
 nodes <- data.frame(
-    name = ipbes_network$nodes,
-    # title = ipbes_network$nodes$,
-    # doi = ipbes_network$nodes$doi,
-    stringsAsFactors = FALSE
+  name = ipbes_network$nodes,
+  # title = ipbes_network$nodes$,
+  # doi = ipbes_network$nodes$doi,
+  stringsAsFactors = FALSE
 )
 
 nodes$id <- 0:(nrow(nodes) - 1)
 
 # create a data frame of the edges that uses id 0:9 instead of their names
 edges <- networkData |>
-    left_join(nodes, by = c("src" = "name")) |>
-    select(-src) |>
-    rename(source = id) |>
-    left_join(nodes, by = c("target" = "name")) |>
-    select(-target) |>
-    rename(target = id) |>
-    mutate(width = 1)
+  left_join(nodes, by = c("src" = "name")) |>
+  select(-src) |>
+  rename(source = id) |>
+  left_join(nodes, by = c("target" = "name")) |>
+  select(-target) |>
+  rename(target = id) |>
+  mutate(width = 1)
 
 # # make a grouping variable that will match to colours
 nodes$group <- 1
@@ -283,38 +293,38 @@ nodes$group <- 1
 openDOI <- "window.open(d.doi)"
 
 nwg <- networkD3::forceNetwork(
-    Links = edges,
-    Nodes = nodes,
-    Source = "source",
-    Target = "target",
-    NodeID = "name",
-    # Nodesize = "nodesize",
-    Group = "group",
-    # Value = "width",
-    opacity = 0.9,
-    zoom = TRUE,
-    # colourScale = DT::JS(ColourScale),
-    fontSize = 20,
-    legend = TRUE,
-    clickAction = openDOI
+  Links = edges,
+  Nodes = nodes,
+  Source = "source",
+  Target = "target",
+  NodeID = "name",
+  # Nodesize = "nodesize",
+  Group = "group",
+  # Value = "width",
+  opacity = 0.9,
+  zoom = TRUE,
+  # colourScale = DT::JS(ColourScale),
+  fontSize = 20,
+  legend = TRUE,
+  clickAction = openDOI
 )
 
 nwg$x$nodes$doi <- nodes$doi
 
 networkD3::saveNetwork(
-    nwg,
-    file = fn,
-    selfcontained = TRUE
+  nwg,
+  file = fn,
+  selfcontained = TRUE
 )
 
 unlink(
-    gsub(
-        fn,
-        pattern = "\\.html",
-        replacement = "_files"
-    ), 
-    recursive = TRUE, 
-    force = TRUE
+  gsub(
+    fn,
+    pattern = "\\.html",
+    replacement = "_files"
+  ),
+  recursive = TRUE,
+  force = TRUE
 )
 
 
@@ -325,16 +335,57 @@ nwg
 
 ```{r}
 ipbes_network$relations |>
-    dplyr::select(
-        year,
-        doi,
-        relation,
-        identifier,
-        direction,
-        title,
-        keywords
-    ) |>
-    IPBES.R::table_dt(
-        fixedColumns = list(leftColumns = 6)
+  dplyr::select(
+    year,
+    doi,
+    relation,
+    identifier,
+    direction,
+    title,
+    keywords
+  ) |>
+  IPBES.R::table_dt(
+    fixedColumns = list(leftColumns = 6)
+  )
+```
+
+
+
+## IPBES deposits on Zenodo with OpenAlex ids
+
+This is a quick and dirty table - it could made nicer - but it fulfills it's purpose.
+
+```{r}
+#| label: merge_together
+
+ipbes_works |>
+  openalexR::works2df() |>
+  dplyr::select(
+    # year = publication_year,
+    # title,
+    doi,
+    oa_id = id
+  ) |>
+  dplyr::mutate(
+    doi = gsub(pattern = "https://doi.org/", replacement = "", x = doi)
+  ) |>
+  dplyr::left_join(
+    x = dois,
+    by = c("doi" = "doi")
+  ) |>
+  dplyr::mutate(
+    doi = paste0("<a href='https://doi.org/", doi, "' target='_blank'>", doi, "</a>"),
+    oa_id = ifelse(
+      is.na(oa_id),
+      "",
+      paste0("<a href='", oa_id, "' target='_blank'>", gsub(pattern = "https://openalex.org/", replacement = "", oa_id), "</a>")
     )
+  ) |>
+  select(
+    doi,
+    oa_id,
+    year,
+    title
+  ) |>
+  IPBES.R::table_dt()
 ```
