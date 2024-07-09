@@ -219,6 +219,27 @@ ipbes_zenodo |>
   )
 ```
 
+The non-open deposits are:
+
+```{r}
+ipbes_zenodo |>
+  sapply(
+    FUN = function(x) {
+      if (x$metadata$access_right != "open") {
+        result <- list(
+          title = substr(x$title, 1, 40),
+          access_right = x$metadata$access_right,
+          link = paste0("<a href='", x$links$self_html, "' target='_blank'>", x$doi, "</a>")
+        )
+      } else {
+        result <- NULL
+      }
+    }
+  ) |>
+  dplyr::bind_rows() |>
+  dplyr::arrange(title) |>
+  knitr::kable()
+```
 
 
 
