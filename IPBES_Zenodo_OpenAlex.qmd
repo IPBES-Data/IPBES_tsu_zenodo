@@ -86,6 +86,9 @@ if (!file.exists(paste0(fn, ".rds"))) {
 ### Get the dois and titles of the records
 
 ```{r}
+#| label: extract_dois
+#|
+
 dois <- data.frame()
 
 for (i in seq(length.out = length(ipbes_zenodo))) {
@@ -107,7 +110,8 @@ dois <- tibble::as_tibble(dois)
 
 ```{r}
 #| label: get_oa_ids
-#|
+
+
 fn <- file.path(".", "data", "ipbes_works.rds")
 if (!file.exists(fn)) {
   # Define the maximum chunk size
@@ -139,6 +143,9 @@ if (!file.exists(fn)) {
 
 ### Number of keywords per Deposit
 ```{r}
+#| label: keywords_per_deposit
+#|
+
 ipbes_zenodo |>
   sapply(
     FUN = function(x) {
@@ -153,9 +160,41 @@ ipbes_zenodo |>
   )
 ```
 
+#### The deposits without keywords
+
+```{r}
+#| label: no_keywords
+#|
+
+ipbes_zenodo |>
+  sapply(
+    FUN = function(x) {
+      l <- x$metadata$keywords |>
+        unlist() |>
+        length()
+      if (l == 0) {
+        result <- list(
+          no_keywords = l,
+          title = substr(x$title, 1, 60),
+          link = paste0("<a href='", x$links$self_html, "' target='_blank'>", x$doi, "</a>")
+        )
+      } else {
+        result <- NULL
+      }
+      return(result)
+    }
+  ) |>
+  dplyr::bind_rows() |>
+  dplyr::arrange(no_keywords, title) |>
+  knitr::kable()
+```
+
 ### Keywords used in the deposits
 
 ```{r}
+#| label: lists_keywords
+#|
+
 ipbes_zenodo |>
   sapply(
     FUN = function(x) {
@@ -198,9 +237,12 @@ ipbes_zenodo |>
   )
 ```
 
-The deposits without licenses are
+#### The deposits without licenses are
 
 ```{r}
+#| label: no_licenses
+#|
+
 ipbes_zenodo |>
   sapply(
     FUN = function(x) {
@@ -212,6 +254,7 @@ ipbes_zenodo |>
       } else {
         result <- NULL
       }
+      return(result)
     }
   ) |>
   dplyr::bind_rows() |>
@@ -240,9 +283,12 @@ ipbes_zenodo |>
   )
 ```
 
-The non-open deposits are:
+#### The non-open deposits are:
 
 ```{r}
+#| label: non_open_access
+#|
+
 ipbes_zenodo |>
   sapply(
     FUN = function(x) {
@@ -255,6 +301,7 @@ ipbes_zenodo |>
       } else {
         result <- NULL
       }
+      return(result)
     }
   ) |>
   dplyr::bind_rows() |>
@@ -428,6 +475,9 @@ nwg
 [IPBES Deposits Network](figures/ipbes_network.html)
 
 ```{r}
+#| label: deposits_table
+#|
+
 ipbes_network$relations |>
   dplyr::select(
     year,
