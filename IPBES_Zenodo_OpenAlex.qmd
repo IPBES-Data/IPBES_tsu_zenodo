@@ -167,26 +167,24 @@ ipbes_zenodo |>
 #|
 
 ipbes_zenodo |>
-  sapply(
+  lapply(
     FUN = function(x) {
-      l <- x$metadata$keywords |>
+      kws <- x$metadata$keywords |>
         unlist() |>
-        length()
-      if (l == 0) {
-        result <- list(
-          no_keywords = l,
-          title = substr(x$title, 1, 60),
-          link = paste0("<a href='", x$links$self_html, "' target='_blank'>", x$doi, "</a>")
-        )
-      } else {
-        result <- NULL
-      }
+        paste0(collapse = " | ")
+      result <- list(
+        no_kws = x$metadata$keywords |>
+          unlist() |>
+          length(),
+        title = paste0("<a href='", x$links$self_html, "' target='_blank'>", substr(x$title, 1, 60), "</a>"),
+        keywords = kws
+      )
       return(result)
     }
   ) |>
   dplyr::bind_rows() |>
-  dplyr::arrange(no_keywords, title) |>
-  knitr::kable()
+  dplyr::arrange(no_kws, title) |>
+  IPBES.R::table_dt()
 ```
 
 ### Keywords used in the deposits
@@ -244,7 +242,7 @@ ipbes_zenodo |>
 #|
 
 ipbes_zenodo |>
-  sapply(
+  lapply(
     FUN = function(x) {
       if (is.null(x$metadata$license)) {
         result <- list(
@@ -290,7 +288,7 @@ ipbes_zenodo |>
 #|
 
 ipbes_zenodo |>
-  sapply(
+  lapply(
     FUN = function(x) {
       if (x$metadata$access_right != "open") {
         result <- list(
