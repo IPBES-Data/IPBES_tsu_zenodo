@@ -170,6 +170,58 @@ ipbes_zenodo |>
 ```
 
 
+## Licenses and Access
+
+### Licenses
+
+```{r}
+#| label: licenses
+#|
+
+ipbes_zenodo |>
+  sapply(
+    FUN = function(x) {
+      l <- x$metadata$license
+      if (is.null(l)) {
+        l <- "NULL"
+      }
+      return(l)
+    }
+  ) |>
+  unlist() |>
+  table(useNA = "always") |>
+  knitr::kable(
+    col.names = c(
+      "license",
+      "n"
+    )
+  )
+```
+
+### Access Rights
+
+```{r}
+#| label: access_right
+#|
+
+ipbes_zenodo |>
+  sapply(
+    FUN = function(x) {
+      x$metadata$access_right
+    }
+  ) |>
+  table(useNA = "always") |>
+  knitr::kable(
+    col.names = c(
+      "access right",
+      "n"
+    )
+  )
+```
+
+
+
+
 
 ## IPBES Deposits Network
 
