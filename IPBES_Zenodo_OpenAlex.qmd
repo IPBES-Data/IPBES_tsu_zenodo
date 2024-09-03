@@ -139,6 +139,7 @@ if (!file.exists(fn)) {
 
 
 # Results
+
 ## Keywords
 
 ### Number of keywords per Deposit
@@ -339,7 +340,7 @@ if (!file.exists(fn)) {
   ) |>
     dplyr::bind_rows() |>
     dplyr::left_join(
-      y = read.table("inst/relation_direction.txt", header = TRUE),
+      y = read.table("input/relation_direction.txt", header = TRUE),
       by = "relation"
     )
 
@@ -388,6 +389,26 @@ if (!file.exists(fn)) {
 ```
 
 ```{r}
+#| label: extract_keywords
+
+keywords <- lapply(
+  ipbes_zenodo,
+  function(x) {
+    result <- c(
+      doi = x$doi,
+      keywords = x$metadata$keywords |>
+        unlist() |>
+        paste(collapse = "` || `")
+    )
+    result["keywords"] <- paste0("`", result["keywords"], "`")
+    return(result)
+  }
+) |>
+  dplyr::bind_rows()
+```
+
+
+```{r}
 #| label: plot_network
 
 fn <- file.path("figures", "ipbes_network.html")
@@ -418,18 +439,31 @@ edges <- networkData |>
   rename(target = id) |>
   mutate(width = 1)
 
+
+## this will be the URL which will be opened when clicked on the node
+nodes$doi <- paste0("https://doi.org/", nodes$name)
+
 # # make a grouping variable that will match to colours
-nodes$group <- 1
+x <- nodes |>
+  dplyr::left_join(
+    keywords,
+    by = c("name" = "doi")
+  )
+
+nodes$group <- "Other"
+nodes$group[grep("`Assessment`", x$keywords)] <- "Assessment"
+nodes$group[grep("`Data management report`", x$keywords)] <- "Data Management Report"
+nodes$group[grep("`SPM`", x$keywords)] <- "SPM"
+
 
 # nodes$oa_id <- nodes$name
 # nodes$name <- nodes$author
 
 # control colours with a JS ordinal scale
-# ColourScale <- 'd3.scaleOrdinal()
-#                         .domain(["key_paper", "other"])
-#                      .range(["#FF6900", "#694489"]);'
+ColourScale <- 'd3.scaleOrdinal()
+                         .domain(["SPM",      "Assessment", "Data Management Report", "Other"])
+                         .range(["#00ff26", "#FF6900",  "#0000FF",              "#694489"]);'
 
-openDOI <- "window.open(d.doi)"
 
 nwg <- networkD3::forceNetwork(
   Links = edges,
@@ -442,13 +476,14 @@ nwg <- networkD3::forceNetwork(
   # Value = "width",
   opacity = 0.9,
   zoom = TRUE,
-  # colourScale = DT::JS(ColourScale),
+  colourScale = DT::JS(ColourScale),
   fontSize = 20,
   legend = TRUE,
-  clickAction = openDOI
+  clickAction = "window.open(d.doi)"
 )
 
 nwg$x$nodes$doi <- nodes$doi
+
 
 networkD3::saveNetwork(
   nwg,
@@ -478,8 +513,8 @@ nwg
 
 ipbes_network$relations |>
   dplyr::select(
-    year,
     doi,
+    year,
     relation,
     identifier,
     direction,
@@ -487,7 +522,7 @@ ipbes_network$relations |>
     keywords
   ) |>
   IPBES.R::table_dt(
-    fixedColumns = list(leftColumns = 6)
+    fixedColumns = list(leftColumns = 3)
   )
 ```
 
@@ -531,3 +566,9 @@ ipbes_works |>
   ) |>
   IPBES.R::table_dt()
 ```
+
+
+
+# Suggested hierarchy of keywords
+
+![Suggested hierarchy of keywords](out/input/keywords/keywords.svg)

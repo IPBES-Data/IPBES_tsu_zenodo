@@ -1,0 +1,13 @@
+@startmindmap
+top to bottom direction
+* **IPBES**\n----\n
+** **Assessment**\n----\nAdd assessment name
+*** **SPM**\n----\nAdd Language
+**** **Figure**\n----\nAdd Figure x.y
+**** **Table**\n----\nAdd Table x.y
+*** **Chapter**\n----\n Add Chapter x
+**** **Figure**\n----\nAdd Figure x.y
+**** **Table**\n----\nAdd Table x.y
+**** **Data Management Plan**
+** **Decision**
+@endmindmap
