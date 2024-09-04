@@ -571,4 +571,10 @@ ipbes_works |>
 
 # Suggested hierarchy of keywords
 
+I suggest the following mandatory keyword scheme. Follow the chart from left to write until you reach your type of deposit. All in **bold** in that path need to be specified (e.g. `Chapter` as well as `Chapter 3` when the deposit). 
+
+Additional keywords can be added. 
+
+Q: Should we start all mandatory standardised keywords with e.g. `_` to make them identifyable from the additional keywords?
+
 ![Suggested hierarchy of keywords](out/input/keywords/keywords.svg)
